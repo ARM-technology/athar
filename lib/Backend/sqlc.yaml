@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "database/schema.sql"   # تحويل للأحرف الصغيرة
+    queries: "database/query.sql"   # تحويل للأحرف الصغيرة
+    gen:
+      go:
+        package: "database"
+        out: "database"             # تحويل للأحرف الصغيرة لتطابق الـ Go Imports
+        sql_package: "pgx/v5"
