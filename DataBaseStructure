@@ -1,0 +1,113 @@
+Table USERS {
+id bigint [pk]
+USERNAME VARCHAR(24) [unique , NOT null]
+PASSWORD varchar(255) [NOT NULL]
+EMAIL varchar(60)
+NAME VARCHAR(45) [NOT NULL]
+Description varchar(120)
+Followers   int
+Following  int
+Views int
+LIKE INT // عدد اللايكات
+POINT int // النقاط هذه تتبع لخوارزميه تزيد و تنقص حسب الخوارزميه للظهور
+POST INT // عدد البوستات و المنشورات في الحساب
+CITY varchar(50)
+LOCATION varchar(60)
+BIRTH_DATE date
+created_at timestamp [not null] //  بشكل تلقائي من نفس قاعدة البيانات ينضاف
+}
+
+
+Table POST{
+id bigint [pk] // تم تعيينه كمفتاح رئيسي فريد للبوست تلقائياً
+user_id bigint [not null] // هذا هو المفتاح الأجنبي الذي يربط البوست بصاحبه
+TITLE varchar(35) [not null]
+DESCREPTION text [not null]
+URL varchar(500)
+COMMENT INT // تعليقات
+LIKE INT
+HATE INT //  يكره او دس لايك
+SHARE INT
+SAVE INT
+POINT INT
+created_at timestamp [not null]
+}
+
+
+Table FOLLOWS {
+  follower_id bigint [not null]  // الشخص الذي ضغط على زر متابعة (التابع)
+  following_id bigint [not null] // الشخص الذي تم استقبال المتابعة منه (المَتبوع)
+  created_at timestamp [not null]
+
+  // المفتاح الرئيسي هنا هجين لضمان عدم تكرار المتابعة لنفس الشخص مرتين
+  Indexes {
+    (follower_id, following_id) [pk]
+  }
+}
+
+// ربط العلاقتين بجدول المستخدمين الرئيسي
+Ref: FOLLOWS.follower_id > USERS.id
+Ref: FOLLOWS.following_id > USERS.id
+
+
+
+Table COMMENTS {
+  id bigint [pk]             // الرقم الفريد للتعليق
+  post_id bigint [not null]  // البوست الذي كُتب تحته التعليق
+  user_id bigint [not null]  // صاحب التعليق
+  content text [not null]    // نص التعليق
+  created_at timestamp [not null]
+}
+
+Table POST_REACTIONS {
+  post_id bigint [not null]  // البوست المتفاعل معه
+  user_id bigint [not null]  // المستخدم الذي ضغط الزر
+  reaction_type varchar(10) [not null] // نوع التفاعل: مثلاً ('LIKE' أو 'HATE')
+  created_at timestamp [not null]
+
+  // مفتاح هجين يمنع المستخدم من عمل أكثر من تفاعل واحد على نفس البوست
+  Indexes {
+    (post_id, user_id) [pk]
+  }
+}
+
+// ربط جداول التفاعلات بالجداول الرئيسية
+Ref: COMMENTS.post_id > POST.id
+Ref: COMMENTS.user_id > USERS.id
+
+Ref: POST_REACTIONS.post_id > POST.id
+Ref: POST_REACTIONS.user_id > USERS.id
+
+
+
+
+Table CHAT_ROOMS {
+  id bigint [pk]                  // الرقم الفريد للمحادثة (المركز الرئيسي للدردشة)
+  user1_id bigint [not null]      // الطرف الأول في المحادثة
+  user2_id bigint [not null]      // الطرف الثاني في المحادثة
+  created_at timestamp [not null]
+
+  // مفتاح هجين فريد يمنع نهائياً إنشاء أكثر من غرفة واحدة لنفس الشخصين
+  Indexes {
+    (user1_id, user2_id) [unique]
+  }
+}
+
+Table PRIVATE_MESSAGES {
+  id bigint [pk]                  // الرقم الفريد للرسالة
+  room_id bigint [not null]       // الرقم الخاص بالغرفة التي تنتمي لها الرسالة
+  sender_id bigint [not null]     // رقم الشخص الذي أرسل الرسالة
+  message_text text [not null]    // نص الرسالة
+  is_read boolean [default: false] // حالة القراءة (صح واحد أو صحين زرقاء)
+  created_at timestamp [not null]
+}
+
+// ربط جداول المحادثات بالمستخدمين والغرف
+Ref: CHAT_ROOMS.user1_id > USERS.id
+Ref: CHAT_ROOMS.user2_id > USERS.id
+
+Ref: PRIVATE_MESSAGES.room_id > CHAT_ROOMS.id
+Ref: PRIVATE_MESSAGES.sender_id > USERS.id
+
+
+
