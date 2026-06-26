@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	// 💡 الحل القاطع: تم تعديل المسار إلى الأحرف الصغيرة (database) ليطابق تماماً ملف Response.go
-	"backendathar/database"
+	database "backendathar/database"
 )
 
 // SetupRouter لتجهيز سيرفر Gin وحقن اتصال الداتابيز في الدوال

@@ -30,14 +30,14 @@ RETURNING id, post_id, user_id, content, created_at;
 
 -- name: DeleteCommentSecure :exec
 -- هندسة أمنية متطورة للحذف (Secure Double-Check Delete):
--- في الأنظمة الاحترافية، يُسمح بحذف التعليق في حالتين فقط:
+-- يُسمح بحذف التعليق في حالتين فقط:
 -- 1. أن يكون المستخدم ($2) هو الكاتب الفعلي للتعليق (user_id = $2).
--- 2. أو أن يكون المستخدم ($2) هو صاحب المنشور الأصلي الذي كُتب عليه التعليق (صاحب المنشور يملك سلطة إدارة صفحة منشوره).
+-- 2. أو أن يكون المستخدم ($2) هو صاحب المنشور الأصلي الذي كُتب عليه التعليق.
 DELETE FROM comments
-WHERE id = $1 
+WHERE comments.id = $1 
   AND (
-    user_id = $2 
-    OR post_id IN (SELECT id FROM posts WHERE user_id = $2)
+    comments.user_id = $2 
+    OR comments.post_id IN (SELECT posts.id FROM posts WHERE posts.user_id = $2)
   );
 
 
@@ -47,9 +47,7 @@ WHERE id = $1
 
 -- name: ListPostCommentsDetailed :many
 -- الكويري الأساسي لعرض التعليقات تحت المنشور:
--- يجلب التعليقات مدمجة (JOIN) مع بيانات كاتب التعليق (معرفه، اسمه، يوزره) لتجنب الطلبات المتكررة.
--- يعتمد الكويري على الـ Cursor Pagination (عبر الـ ID) لضمان عدم تكرار التعليقات أثناء التمرير، 
--- ويرتبها تصاعدياً (من الأقدم للأحدث) وهو النظام القياسي لسلاسل التعليقات.
+-- يجلب التعليقات مدمجة (JOIN) مع بيانات كاتب التعليق لتجنب الطلبات المتكررة.
 SELECT 
     c.id AS comment_id,
     c.post_id,
@@ -61,13 +59,12 @@ SELECT
 FROM comments c
 INNER JOIN users u ON c.user_id = u.id
 WHERE c.post_id = $1
-  AND ($2::bigint = 0 OR c.id > $2) -- إذا مررنا 0 يجلب من البداية، وإذا مررنا ID يجلب التعليقات التالية له (Scroll Down)
+  AND ($2::bigint = 0 OR c.id > $2) -- استخدام c.id بشكل صريح يمنع الـ ambiguity تماماً
 ORDER BY c.id ASC
 LIMIT $3;
 
 -- name: SearchCommentsInPost :many
--- ميزة بحث متقدمة: تمكن صاحب المنشور أو المستخدمين من البحث النصي الذكي (Fuzzy Search) عن كلمة معينة
--- داخل تعليقات منشور محدد فقط، مع جلب بيانات كتابها ودعم الـ Pagination
+-- ميزة بحث متقدمة داخل تعليقات منشور محدد فقط، مع جلب بيانات كتابها ودعم الـ Pagination
 SELECT 
     c.id AS comment_id,
     c.post_id,
@@ -89,17 +86,21 @@ LIMIT $3 OFFSET $4;
 -- ====================================================================================
 
 -- name: CountCommentsByPostID :one
--- حساب إجمالي عدد التعليقات على منشور معين (يستخدم لتحديث العدادات أو العرض السريع على بطاقة المنشور الخارجي)
+-- حساب إجمالي عدد التعليقات على منشور معين
 SELECT COUNT(*)::bigint
 FROM comments
 WHERE post_id = $1;
 
 -- name: BatchGetCommentsByIDs :many
--- كويري عالي الأداء لبيئات الضغط العالي: تمرير مصفوفة IDs من التعليقات وجلبها كاملة بطلب واحد (Single Round-Trip)
--- مع الحفاظ التام على ترتيب المعرفات الممررة في الطلب
+-- كويري عالي الأداء لتمرير مصفوفة IDs من التعليقات وجلبها كاملة بطلب واحد
 SELECT 
-    c.id AS comment_id, c.post_id, c.content, c.created_at,
-    u.id AS author_id, u.username AS author_username, u.name AS author_name
+    c.id AS comment_id, 
+    c.post_id, 
+    c.content, 
+    c.created_at,
+    u.id AS author_id, 
+    u.username AS author_username, 
+    u.name AS author_name
 FROM comments c
 INNER JOIN users u ON c.user_id = u.id
 WHERE c.id = ANY($1::bigint[])
