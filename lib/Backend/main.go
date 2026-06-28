@@ -1,16 +1,16 @@
 package main
 
 import (
-	/*"context"
+	"context"
+	_ "embed" // تفعيل ميزة التضمين التلقائي للملفات
 	"fmt"
 	"log"
 
-	_ "github.com/jackc/pgx/v5" */
-	//	AI "backendathar/Experimentation"
-	//	"fmt"
-	en "backendathar/Tools/Cryptography/encryption"
-	// _ APIs "backendathar/APIs"
-	_ "backendathar/database"
+	r "backendathar/APIs"
+	"backendathar/database" // استيراد الحزمة المولدة عبر sqlc
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	// "backendathar/APIs"   // قم بإلغاء التعليق عن هذا السطر عندما تجهز الراوترات الخاصة بك
 )
 
 const (
@@ -21,56 +21,49 @@ const (
 	DBName     = "athar_db"
 	LogLevel   = "DEBUG"
 
-	// 🔥 المنفذ الجديد الخاص بمشروعك الحالي لتجنب التعارض مع 8080 و 80
+	// المنفذ الخاص بمشروعك الحالي لتجنب التعارض
 	APIPort = "8082"
 )
 
+// تضمين ملف السكيما المتواجد داخل مجلد database تلقائياً وقت بناء التطبيق
+//
+//go:embed database/schema.sql
+var schemaSQL string
+
 func main() {
+	ctx := context.Background()
 
-	en.Example_encryptedKeyset()
+	log.Println("Starting the application...👨🏻‍💻✅")
 
-	/*	result, _ := AI.AIemployye(" السلام عليكم  عرفني عنكم ")
+	// 1. بناء رابط الاتصال بقاعدة البيانات بشكل ديناميكي باستخدام الثوابت المعرفة أعلاه
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		DBUser, DBPassword, DBHost, DBPort, DBName,
+	)
 
+	log.Println("Starting the database connection...🔄")
 
-		fmt.Println(result)
-		fmt.Println("---------------------------------------")
-	*/
+	// 2. إنشاء اتصال مجمع (Connection Pool) باستخدام pgxpool وهو الخيار الاحترافي والآمن للـ Concurrency
+	pool, err := pgxpool.New(ctx, connStr)
+	if err != nil {
+		log.Fatalf("❌Failed to connect to the database: %v\n", err)
+	}
+	defer pool.Close()
 
-	/*
-	   	for i := 0; i < 10; i++ {
-	   		result, _ = AI.AIemployye(" السلام عليكم اسمي قلب و جبل وش عندكم خدمات ")
+	// 3. التنفيذ التلقائي لملف السكيما لإنشاء الجداول فور تشغيل التطبيق
+	log.Println("🔄 جاري فحص وتطبيق السكيما وإنشاء الجداول...")
+	_, err = pool.Exec(ctx, schemaSQL)
+	if err != nil {
+		log.Fatalf("❌ فشل في تطبيق السكيما وإنشاء الجداول: %v\n", err)
+	}
+	log.Println("✅ تم فحص وتطبيق السكيما بنجاح، وجميع جداولك جاهزة الآن!")
 
-	   		fmt.Println(result)
-	   		fmt.Println("---------------------------------------")
-	   	}
-	   8/
-	   	/*
+	// 4. ربط الكويري المولّد من أداة sqlc مع قاعدة البيانات الحية عبر الـ pool
+	queries := database.New(pool)
 
-	   		fmt.Print(" Hate Me I am Crazy 🤪🤪🤪🫨😜🤪")
-
-	   		ctx := context.Background()
-
-	   		// بناء رابط الاتصال بقاعدة البيانات المعزولة
-	   		connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
-	   			DBUser, DBPassword, DBHost, DBPort, DBName,
-	   		)
-
-	   		conn, err := pgx.Connect(ctx, connStr)
-	   		if err != nil {
-	   			log.Fatalf("❌ Error connect with DB : %v\n", err)
-	   		}
-	   		defer conn.Close(ctx)
-
-	   		queries := database.New(conn)
-	   		r := APIs.SetupRouter(queries)
-
-	   		// تشغيل السيرفر على المنفذ الجديد المستقل 8082
-	   		log.Printf("🚀 السيرفر يعمل الآن بنجاح وبشكل مستقل على المنفذ :%s...\n", APIPort)
-	   		if err := r.Run(":" + APIPort); err != nil {
-	   			log.Fatalf("❌ فشل تشغيل السيرفر: %v\n", err)
-	   		}
-
-
-	*/
+	log.Println("🎉Successfully started the application...✅")
+	fmt.Println("-----------------------------------------")
+	router := r.RouterAPI(queries)
+	router.Run(":" + APIPort)
+	log.Printf("🚀 Server is running on port %s...\n", APIPort)
 
 }

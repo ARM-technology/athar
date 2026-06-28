@@ -1,5 +1,5 @@
 -- 1. جدول المستخدمين (USERS)
-CREATE DATABASE athar_db WITH ENCODING='UTF8';
+-- CREATE DATABASE athar_db WITH ENCODING='UTF8';
 
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
